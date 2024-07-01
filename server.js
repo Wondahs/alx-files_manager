@@ -4,6 +4,7 @@ import startServer from './lib/start-server';
 
 const server = express();
 
+server.use(express.json());
 injectRoutes(server);
 startServer(server);
 
