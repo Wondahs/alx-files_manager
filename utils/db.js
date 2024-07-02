@@ -1,4 +1,6 @@
-const { MongoClient } = require('mongodb');
+/* eslint-disable class-methods-use-this */
+// const { MongoClient, ObjectId } = require('mongodb');
+import { MongoClient, ObjectId } from 'mongodb';
 
 const DB_HOST = process.env.DB_HOST || 'localhost';
 const DB_PORT = process.env.DB_PORT || 27017;
@@ -62,7 +64,11 @@ class DBClient {
     const total = await this.db.collection('files').countDocuments();
     return total;
   }
+
+  getObjectId(id) {
+    return new ObjectId(id);
+  }
 }
 
 const dbClient = new DBClient();
-module.exports = dbClient;
+export default dbClient;
