@@ -1,6 +1,10 @@
 /* eslint-disable class-methods-use-this */
+import mime from 'mime-types';
+import { Queue } from 'bull';
 import dbClient from '../utils/db';
-import { errorJson, filehandler, getUserId } from '../utils/helpers';
+import {
+  errorJson, filehandler, getUserId, validateUser, readFile,
+} from '../utils/helpers';
 
 /**
  * Class representing a controller for handling file uploads.
@@ -95,6 +99,10 @@ export default class FilesController {
       newFile.id = newDbFile.insertedId;
       const returnFile = { ...newFile };
       delete returnFile._id;
+      const fileQueue = new Queue('fileQueue');
+      if (returnFile.type === 'image') {
+        await fileQueue.add({ userid: returnFile.userId, fileid: returnFile.id });
+      }
       return res.status(201).json(returnFile);
     }
 
@@ -116,6 +124,9 @@ export default class FilesController {
 
       const file = await dbClient.db.collection('files').findOne({ _id: dbClient.getObjectId(fileId), userId });
       if (!file) return res.status(404).json({ error: 'Not found' });
+
+      file.id = file._id;
+      delete file._id;
 
       return res.json(file);
     } catch (err) {
@@ -148,10 +159,72 @@ export default class FilesController {
         ],
       ).toArray();
 
-      if (files) return res.status(201).json(files);
+      const newArray = [];
+
+      files.forEach((arr) => {
+        const newArr = arr;
+        newArr.id = arr._id;
+        delete newArr._id;
+        newArray.push(newArr);
+      });
+
+      if (files) return res.status(201).json(newArray);
     } catch (error) {
       return res.status(500).json({ error });
     }
     return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  static async modifyDocument(req, res, propVal) {
+    try {
+      const userId = await validateUser(req, res);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+      const { id } = req.params;
+
+      if (!id) return res.status(404).json({ error: 'Not found' });
+      const file = await dbClient.db.collection('files')
+        .updateOne(
+          { _id: dbClient.getObjectId(id), userId },
+          { $set: propVal },
+        );
+      if (!file) return res.status(404).json({ error: 'Not found' });
+      const returnFile = await dbClient.db.collection('files').findOne({ _id: dbClient.getObjectId(id), userId });
+      return res.status(200).json(returnFile);
+    } catch (error) {
+      return res.status(500).json({ error });
+    }
+  }
+
+  static async putUnpublish(req, res) {
+    const propVal = { isPublic: false };
+    await FilesController.modifyDocument(req, res, propVal);
+  }
+
+  static async putPublish(req, res) {
+    const propVal = { isPublic: true };
+    await FilesController.modifyDocument(req, res, propVal);
+  }
+
+  static async getFile(req, res) {
+    try {
+      if (!req.headers['x-token']) return res.status(404).json({ error: 'Not found' });
+      const userId = await validateUser(req, res);
+      const { id } = req.params;
+
+      if (!id) return res.status(404).json({ error: 'Not found' });
+      const file = await dbClient.db.collection('files').findOne({ _id: dbClient.getObjectId(id) });
+      if (!file || (!file.isPublic && (!userId || file.userId.toString() !== userId))) {
+        return res.status(404).json({ error: 'Not found' });
+      }
+      if (file.type === 'folder') return res.status(404).json({ error: 'A folder doesn\'t have content' });
+
+      const fileData = await readFile(file.localPath);
+      const mimeType = mime.lookup(file.name);
+      if (!mimeType) return res.status(500).json({ error: 'Unable to determine MIME type' });
+      res.setHeader('Content-Type', mimeType);
+      return res.send(fileData);
+    } catch (error) {
+      return res.status(500).json({ error: error.message });
+    }
   }
 }

@@ -55,3 +55,37 @@ export async function filehandler(data, filePath) {
     });
   });
 }
+
+/**
+ * Validates the user by checking the authentication token and retrieving the user ID from Redis.
+ *
+ * @param {Object} req - The request object containing the authentication token.
+ * @param {Object} res - The response object to send the response.
+ *
+ * @returns {Promise<string|Object>} - A Promise that resolves to the user ID if the token is valid and authorized,
+ * or rejects with an error response if the token is invalid or not provided.
+ *
+ * @throws {Error} - If an error occurs while interacting with Redis.
+ */
+export async function validateUser(req, res) {
+  try {
+    const token = req.headers['x-token'];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+    const userId = await getUserId(token);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    return userId;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+}
+
+export async function readFile(filePath) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, (err, data) => {
+      if (err) reject(new Error(err.message));
+      const decodedData = Buffer.from(data, 'base64').toString('ascii');
+      resolve(decodedData);
+    });
+  });
+}
