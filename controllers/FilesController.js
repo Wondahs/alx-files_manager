@@ -131,8 +131,8 @@ export default class FilesController {
       const userId = await getUserId(token);
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      let parentID = req.body.parentID || '0';
-      const page = parseInt(req.body.page, 10) || 0;
+      let parentID = req.query.parentID || '0';
+      const page = parseInt(req.query.page, 10) || 0;
       const pageSize = 20;
       const skip = page * pageSize;
       const limit = pageSize;
