@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { v4 as uuidv4 } from 'uuid';
-import fs from 'fs/promises';
+import fs from 'fs';
 import path from 'path';
 import redisClient from './redis';
 
@@ -42,15 +42,16 @@ export async function getUserId(token) {
    * @throws {Error} - If an error occurs during directory creation, file writing, or any other step.
    */
 export async function filehandler(data, filePath) {
-  try {
-    await fs.mkdir(filePath, { recursive: true });
+  return new Promise((resolve, reject) => {
+    fs.mkdir(filePath, { recursive: true }, (err) => {
+      if (err) reject(new Error(err.message));
+    });
 
     const fileName = uuidv4();
     const fullPath = path.join(filePath, fileName);
-    await fs.writeFile(fullPath, data);
-
-    return fullPath;
-  } catch (err) {
-    throw new Error(`An error occured: ${err.message}`);
-  }
+    fs.writeFile(fullPath, data, (err) => {
+      if (err) reject(new Error(err.message));
+      resolve(fullPath);
+    });
+  });
 }
