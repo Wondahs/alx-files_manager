@@ -1,6 +1,6 @@
 /* eslint-disable class-methods-use-this */
 import mime from 'mime-types';
-import { Queue } from 'bull';
+import Queue from 'bull';
 import dbClient from '../utils/db';
 import {
   errorJson, filehandler, getUserId, validateUser, readFile,
@@ -82,10 +82,10 @@ export default class FilesController {
     let localPath;
     if (notFolder) {
       // Decrypt file data
-      const decrypedData = Buffer.from(data, 'base64').toString('ascii');
+      const decrypedData = Buffer.from(data, 'base64');
       try {
       // Save file data to disk and get the local path
-        localPath = await filehandler(decrypedData, filePath);
+        localPath = await filehandler(type === 'image' ? decrypedData : decrypedData.toString('ascii'), filePath);
       } catch (err) {
         return res.status(500).json({ error: err.message });
       }
@@ -98,10 +98,12 @@ export default class FilesController {
     if (newDbFile) {
       newFile.id = newDbFile.insertedId;
       const returnFile = { ...newFile };
+      console.log(returnFile);
       delete returnFile._id;
       const fileQueue = new Queue('fileQueue');
       if (returnFile.type === 'image') {
-        await fileQueue.add({ userid: returnFile.userId, fileid: returnFile.id });
+        await fileQueue.add('fileQueue', { userId: returnFile.userId.toString(), fileId: returnFile.id.toString() });
+        console.log('Adding job to queue:', { userId: returnFile.userId.toString(), fileId: returnFile.id.toString() });
       }
       return res.status(201).json(returnFile);
     }
