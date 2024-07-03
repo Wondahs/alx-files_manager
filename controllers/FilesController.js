@@ -101,4 +101,56 @@ export default class FilesController {
     // Handle server errors
     return res.status(500).send('Internal server error');
   }
+
+  static async getShow(req, res) {
+    try {
+      const fileId = req.params.id;
+      if (!fileId) {
+        return errorJson(res, 'Missing id');
+      }
+      const token = req.headers['x-token'];
+      if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+      const userId = await getUserId(token);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      const file = await dbClient.db.collection('files').findOne({ _id: dbClient.getObjectId(fileId), userId });
+      if (!file) return res.status(404).json({ error: 'Not found' });
+
+      return res.json(file);
+    } catch (err) {
+      return res.status(500).json({ error: (err.message) });
+    }
+  }
+
+  static async getIndex(req, res) {
+    try {
+      const token = req.headers['x-token'];
+      if (!token) return res.status(401).json({ error: 'Unauthorized' });
+
+      const userId = await getUserId(token);
+      if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+
+      let parentID = req.body.parentID || '0';
+      const page = parseInt(req.body.page, 10) || 0;
+      const pageSize = 20;
+      const skip = page * pageSize;
+      const limit = pageSize;
+
+      parentID = parentID === '0' ? 0 : dbClient.getObjectId(parentID);
+
+      const files = await dbClient.db.collection('files').aggregate(
+        [
+          { $match: { userId, parentID } },
+          { $sort: { name: 1 } },
+          { $skip: skip },
+          { $limit: limit },
+        ],
+      ).toArray();
+
+      if (files) return res.status(201).json(files);
+    } catch (error) {
+      return res.status(500).json({ error });
+    }
+  }
 }
