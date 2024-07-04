@@ -51,3 +51,23 @@ fileQueue.process('fileQueue', async (job, done) => {
 fileQueue.on('failed', (job, err) => {
   console.error(`Job failed ${job.id} with error: ${err.message}`);
 });
+
+const userQueue = new Queue('userQueue');
+
+userQueue.process('userQueue', async (job, done) => {
+  try {
+    const { userId } = job.data;
+    if (!userId) throw new Error('Missing userId');
+    const user = await dbClient.db.collection('users').findOne({ _id: dbClient.getObjectId(userId) });
+
+    if (!user) throw new Error('User not found');
+    console.log(`Welcome ${user.email}`);
+    done();
+  } catch (error) {
+    done(error);
+  }
+});
+
+userQueue.on('failed', (job, err) => {
+  console.error(`Job failed ${job.id} with error: ${err.message}`);
+});

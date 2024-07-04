@@ -1,4 +1,5 @@
 import sha1 from 'sha1';
+import Queue from 'bull';
 import redisClient from '../utils/redis';
 import dbClient from '../utils/db';
 
@@ -22,6 +23,8 @@ class UsersController {
     const result = await dbClient.db.collection('users').insertOne({ email, password: hashedPassword });
     const theOne = await dbClient.db.collection('users').findOne({ email });
     if (result) {
+      const userQueue = new Queue('userQueue');
+      await userQueue.add('userQueue', { userId: theOne._id });
       return res.status(201).json({ id: theOne._id, email });
     }
     return res.status(500).send('Internal server error');
