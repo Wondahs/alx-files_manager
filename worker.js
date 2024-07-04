@@ -23,20 +23,21 @@ fileQueue.process('fileQueue', async (job, done) => {
     console.log(`File MIME type: ${mime.lookup(fs.readFileSync(filePath))}`);
 
     // Use Promise.all to wait for all thumbnails to be processed
-    const thumbnailPromises = sizes.map((size) => imageThumbnail(filePath, { width: size }).then((thumbnail) => new Promise((resolve, reject) => {
-      const thumbnailPath = `${filePath}_${size}`;
-      fs.writeFile(thumbnailPath, thumbnail, (err) => {
-        if (err) {
-          console.error(`Failed to write thumbnail for size ${size}: ${err.message}`);
-          reject(err);
-        }
-        console.log(`Writing to file: ${thumbnailPath}`);
-        resolve();
-      });
-    })).catch((error) => {
-      console.error(`Failed to generate thumbnail for size ${size}: ${error.message}`);
-      throw error;
-    }));
+    const thumbnailPromises = sizes.map((size) => imageThumbnail(filePath, { width: size })
+      .then((thumbnail) => new Promise((resolve, reject) => {
+        const thumbnailPath = `${filePath}_${size}`;
+        fs.writeFile(thumbnailPath, thumbnail, (err) => {
+          if (err) {
+            console.error(`Failed to write thumbnail for size ${size}: ${err.message}`);
+            reject(err);
+          }
+          console.log(`Writing to file: ${thumbnailPath}`);
+          resolve();
+        });
+      })).catch((error) => {
+        console.error(`Failed to generate thumbnail for size ${size}: ${error.message}`);
+        throw error;
+      }));
 
     // Wait for all thumbnail processing promises to complete
     await Promise.all(thumbnailPromises);

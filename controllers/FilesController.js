@@ -3,7 +3,8 @@ import mime from 'mime-types';
 import Queue from 'bull';
 import dbClient from '../utils/db';
 import {
-  errorJson, filehandler, getUserId, validateUser, readFile,
+  errorJson, filehandler, getUserId,
+  validateUser, readFile, readByte, validateUserWithoutToken,
 } from '../utils/helpers';
 
 /**
@@ -209,9 +210,10 @@ export default class FilesController {
 
   static async getFile(req, res) {
     try {
-      if (!req.headers['x-token']) return res.status(404).json({ error: 'Not found' });
-      const userId = await validateUser(req, res);
+      const userId = await validateUserWithoutToken(req, res);
       const { id } = req.params;
+      const { size } = req.query;
+      const sizes = ['500', '250', '100'];
 
       if (!id) return res.status(404).json({ error: 'Not found' });
       const file = await dbClient.db.collection('files').findOne({ _id: dbClient.getObjectId(id) });
@@ -220,7 +222,19 @@ export default class FilesController {
       }
       if (file.type === 'folder') return res.status(404).json({ error: 'A folder doesn\'t have content' });
 
-      const fileData = await readFile(file.localPath);
+      const isImage = file.type === 'image';
+      const isValidSize = sizes.includes(size);
+      let fileData;
+
+      if (isImage) {
+        if (isValidSize) {
+          fileData = await readByte(`${file.localPath}_${size}`);
+        } else {
+          fileData = await readByte(file.localPath);
+        }
+      } else {
+        fileData = await readFile(file.localPath);
+      }
       const mimeType = mime.lookup(file.name);
       if (!mimeType) return res.status(500).json({ error: 'Unable to determine MIME type' });
       res.setHeader('Content-Type', mimeType);

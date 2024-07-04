@@ -80,11 +80,34 @@ export async function validateUser(req, res) {
   }
 }
 
+export async function validateUserWithoutToken(req, res) {
+  try {
+    const token = req.headers['x-token'];
+    if (!token) return null;
+
+    const userId = await getUserId(token);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    return userId;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+}
+
 export async function readFile(filePath) {
   return new Promise((resolve, reject) => {
     fs.readFile(filePath, (err, data) => {
       if (err) reject(new Error(err.message));
       const decodedData = Buffer.from(data, 'base64').toString('ascii');
+      resolve(decodedData);
+    });
+  });
+}
+
+export async function readByte(filePath) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filePath, (err, data) => {
+      if (err) reject(new Error(err.message));
+      const decodedData = Buffer.from(data, 'base64');
       resolve(decodedData);
     });
   });
