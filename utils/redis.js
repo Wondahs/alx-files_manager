@@ -1,5 +1,4 @@
 // RedisClient
-const { expect } = require('chai');
 const redis = require('redis');
 const { promisify } = require('util');
 
@@ -24,7 +23,8 @@ class RedisClient {
 
     /**
      * Event handler for 'error' event.
-     * Logs the error message and sets isConnected to false when the client fails to connect to the Redis server.
+     * Logs the error message and sets isConnected to false when the client
+     * fails to connect to the Redis server.
      * @param {Error} err - The error object.
      */
     this.client.on('error', (err) => {
@@ -89,7 +89,7 @@ class RedisClient {
   async set(key, value, duration) {
     try {
       await this.setAsync(key, value);
-      await this.expireAsync(key, duration);
+      return await this.expireAsync(key, duration);
     } catch (err) {
       return err.toString();
     }
@@ -102,7 +102,7 @@ class RedisClient {
    */
   async del(key) {
     try {
-      await this.delAsync(key);
+      return await this.delAsync(key);
     } catch (err) {
       return err.toString();
     }
