@@ -37,7 +37,7 @@ export default class FilesController {
     } = req.body;
 
     // eslint-disable-next-line prefer-destructuring
-    let parentID = req.body.parentID;
+    let parentId = req.body.parentId;
     const filePath = process.env.FOLDER_PATH || '/tmp/files_manager';
 
     // Validate request parameters
@@ -55,11 +55,12 @@ export default class FilesController {
     }
 
     let objparentId;
-    if (parentID) {
-      objparentId = dbClient.getObjectId(parentID);
-
+    if (parentId) {
+      console.log(parentId);
+      objparentId = dbClient.getObjectId(parentId);
+      console.log(objparentId);
       // Check if parent exists and is a folder
-      const file = await dbClient.db.collection('files').findOne({ parentID: objparentId });
+      const file = await dbClient.db.collection('files').findOne({ _id: objparentId });
       if (!file) {
         return errorJson(res, 'Parent not found');
       }
@@ -67,16 +68,16 @@ export default class FilesController {
         return errorJson(res, 'Parent is not a folder');
       }
     } else {
-      parentID = 0;
+      parentId = 0;
     }
 
     // Create a new file object
     const newFile = {
-      userId,
+      userId: dbClient.getObjectId(userId),
       name,
       type,
       isPublic: isPublic || false,
-      parentID: objparentId || parentID,
+      parentId: objparentId || parentId,
     };
 
     const notFolder = type === 'file' || type === 'image';
@@ -99,12 +100,11 @@ export default class FilesController {
     if (newDbFile) {
       newFile.id = newDbFile.insertedId;
       const returnFile = { ...newFile };
-      console.log(returnFile);
+      // console.log(returnFile);
       delete returnFile._id;
       const fileQueue = new Queue('fileQueue');
       if (returnFile.type === 'image') {
         await fileQueue.add('fileQueue', { userId: returnFile.userId.toString(), fileId: returnFile.id.toString() });
-        console.log('Adding job to queue:', { userId: returnFile.userId.toString(), fileId: returnFile.id.toString() });
       }
       return res.status(201).json(returnFile);
     }
@@ -145,17 +145,17 @@ export default class FilesController {
       const userId = await getUserId(token);
       if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-      let parentID = req.query.parentID || '0';
+      let parentId = req.query.parentId || '0';
       const page = parseInt(req.query.page, 10) || 0;
       const pageSize = 20;
       const skip = page * pageSize;
       const limit = pageSize;
 
-      parentID = parentID === '0' ? 0 : dbClient.getObjectId(parentID);
+      parentId = parentId === '0' ? 0 : dbClient.getObjectId(parentId);
 
       const files = await dbClient.db.collection('files').aggregate(
         [
-          { $match: { userId, parentID } },
+          { $match: { userId, parentId } },
           { $sort: { name: 1 } },
           { $skip: skip },
           { $limit: limit },

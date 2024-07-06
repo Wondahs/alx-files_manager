@@ -45,13 +45,13 @@ export async function filehandler(data, filePath) {
   return new Promise((resolve, reject) => {
     fs.mkdir(filePath, { recursive: true }, (err) => {
       if (err) reject(new Error(err.message));
-    });
 
-    const fileName = uuidv4();
-    const fullPath = path.join(filePath, fileName);
-    fs.writeFile(fullPath, data, (err) => {
-      if (err) reject(new Error(err.message));
-      resolve(fullPath);
+      const fileName = uuidv4();
+      const fullPath = path.join(filePath, fileName);
+      fs.writeFile(fullPath, data, (err) => {
+        if (err) reject(new Error(err.message));
+        resolve(fullPath);
+      });
     });
   });
 }
